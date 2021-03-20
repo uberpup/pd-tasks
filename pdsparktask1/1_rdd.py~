@@ -1,0 +1,21 @@
+from pyspark.sql import SparkSession, Window
+from pyspark.sql.types import *
+import re
+
+sp = SparkSession.builder.master("yarn").appName("hw1").config("spark.ui.port", "18089").getOrCreate()
+
+rdd = sp.sparkContext.textFile("/data/wiki/en_articles_part/articles-part")
+
+rdd = rdd.map(lambda x : x.strip().lower())
+rdd = rdd.map(lambda x : re.sub("[\W+|\W+$]", " ", x))
+rdd = rdd.map(lambda x : x.split(" "))
+rdd = rdd.flatMap(lambda l: (tuple(x) for x in zip(l, l[1:])))
+rdd = rdd.filter(lambda x: x[0] == "narodnaya" and len(x[1]) > 0)
+rdd = rdd.map(lambda x : (x, 1))
+rdd = rdd.reduceByKey(lambda a, b : a + b)
+rdd = rdd.sortBy(lambda a: -a[1])
+
+values = rdd.collect()
+
+for value, count in values:
+    print("{}_{} {}".format(value[0], value[1], count))
